@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'services/nearby_attractions_service.dart';
 
 void main() {
   runApp(const TravelBuddyApp());
@@ -433,7 +434,7 @@ class _BottomNavigation extends StatelessWidget {
   }
 }
 
-class HomePage extends StatelessWidget {
+class HomePage extends StatefulWidget {
   const HomePage({
     super.key,
     required this.favorites,
@@ -448,6 +449,76 @@ class HomePage extends StatelessWidget {
   final ValueChanged<Destination> onAddToTrip;
   final VoidCallback onOpenFavorites;
   final VoidCallback onOpenPlanner;
+
+  @override
+  State<HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage> {
+  bool _isLoadingNearby = false;
+  String? _nearbyError;
+  List<NearbyAttraction> _nearbyResults = [];
+  bool _hasSearched = false;
+
+  Future<void> _findNearbyAttractions() async {
+    setState(() {
+      _isLoadingNearby = true;
+      _nearbyError = null;
+      _hasSearched = true;
+    });
+
+    // 1. Check location permission
+    final hasPermission = await NearbyAttractionsService.checkLocationPermission();
+    if (!hasPermission) {
+      setState(() {
+        _isLoadingNearby = false;
+        _nearbyError = 'Location permission denied. Please enable GPS and allow location access.';
+      });
+      return;
+    }
+
+    // 2. Get current position
+    final position = await NearbyAttractionsService.getCurrentPosition();
+    if (position == null) {
+      setState(() {
+        _isLoadingNearby = false;
+        _nearbyError = 'Unable to get your current location. Make sure GPS is enabled.';
+      });
+      return;
+    }
+
+    // 3. Fetch nearby attractions from API
+    try {
+      final results = await NearbyAttractionsService.fetchNearbyAttractions(
+        latitude: position.latitude,
+        longitude: position.longitude,
+        radius: 5000,
+      );
+      setState(() {
+        _nearbyResults = results;
+        _isLoadingNearby = false;
+      });
+    } catch (e) {
+      setState(() {
+        _nearbyError = 'Failed to load nearby attractions: $e';
+        _isLoadingNearby = false;
+      });
+    }
+  }
+
+  Destination _toDestination(NearbyAttraction attraction) {
+    return Destination(
+      name: attraction.name,
+      location: attraction.address.isNotEmpty ? attraction.address : attraction.category,
+      rating: attraction.rating > 0 ? attraction.rating : 4.0,
+      distance: '${attraction.distanceKm.toStringAsFixed(1)} km',
+      description: '${attraction.category} near you.',
+      imageUrl: attraction.imageUrl.isNotEmpty
+          ? attraction.imageUrl
+          : 'https://dynamic-media-cdn.tripadvisor.com/media/photo-o/1b/7f/af/78/lakeview-park.jpg?w=1100&h=600&s=1',
+      activity: 'Quiet',
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -493,36 +564,121 @@ class HomePage extends StatelessWidget {
           },
         ),
         const SizedBox(height: 14),
-        Row(
-          children: [
-            const Expanded(
-              child: Text(
-                'Nearby attractions',
-                style: TextStyle(fontSize: 19, fontWeight: FontWeight.bold),
+
+        // ✅ NEW: Find Nearby Attractions Button
+        SizedBox(
+          width: double.infinity,
+          child: FilledButton.icon(
+            onPressed: _isLoadingNearby ? null : _findNearbyAttractions,
+            icon: _isLoadingNearby
+                ? const SizedBox(
+                    width: 20, height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                  )
+                : const Icon(Icons.my_location_rounded),
+            label: Text(_isLoadingNearby ? 'Finding...' : 'Find Nearby Attractions'),
+            style: FilledButton.styleFrom(
+              backgroundColor: travelCyan,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
               ),
-            ),
-            TextButton.icon(
-              onPressed: onOpenFavorites,
-              icon: const Icon(Icons.favorite_border, size: 18),
-              label: const Text('Favourites'),
-            ),
-          ],
-        ),
-        ...sampleDestinations.map(
-              (destination) => Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: DestinationCard(
-              destination: destination,
-              isFavorite: favorites.contains(destination.name),
-              onToggleFavorite: () => onToggleFavorite(destination),
-              onAddToTrip: () => onAddToTrip(destination),
-              onTap: () => _showDetails(context, destination),
             ),
           ),
         ),
+        const SizedBox(height: 14),
+
+        // Show error if any
+        if (_nearbyError != null) ...[
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.red.shade50,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.red.shade200),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.error_outline, color: Colors.red.shade700, size: 20),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    _nearbyError!,
+                    style: TextStyle(color: Colors.red.shade700, fontSize: 13),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+        ],
+
+        // Show nearby results when available
+        if (_hasSearched && _nearbyResults.isNotEmpty) ...[
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Nearby attractions (${_nearbyResults.length})',
+                  style: const TextStyle(fontSize: 19, fontWeight: FontWeight.bold),
+                ),
+              ),
+              TextButton.icon(
+                onPressed: widget.onOpenFavorites,
+                icon: const Icon(Icons.favorite_border, size: 18),
+                label: const Text('Favourites'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          ..._nearbyResults.map(
+            (attraction) => Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: DestinationCard(
+                destination: _toDestination(attraction),
+                isFavorite: widget.favorites.contains(attraction.name),
+                onToggleFavorite: () => widget.onToggleFavorite(_toDestination(attraction)),
+                onAddToTrip: () => widget.onAddToTrip(_toDestination(attraction)),
+                onTap: () => _showDetails(context, _toDestination(attraction)),
+              ),
+            ),
+          ),
+        ] else if (!_hasSearched) ...[
+          // Original section shown before user taps button
+          Row(
+            children: [
+              const Expanded(
+                child: Text(
+                  'Nearby attractions',
+                  style: TextStyle(fontSize: 19, fontWeight: FontWeight.bold),
+                ),
+              ),
+              TextButton.icon(
+                onPressed: widget.onOpenFavorites,
+                icon: const Icon(Icons.favorite_border, size: 18),
+                label: const Text('Favourites'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          ...sampleDestinations.map(
+            (destination) => Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: DestinationCard(
+                destination: destination,
+                isFavorite: widget.favorites.contains(destination.name),
+                onToggleFavorite: () => widget.onToggleFavorite(destination),
+                onAddToTrip: () => widget.onAddToTrip(destination),
+                onTap: () => _showDetails(context, destination),
+              ),
+            ),
+          ),
+        ],
+
         const SizedBox(height: 4),
         OutlinedButton.icon(
-          onPressed: onOpenPlanner,
+          onPressed: widget.onOpenPlanner,
           icon: const Icon(Icons.calendar_month_outlined),
           label: const Text('Plan a trip'),
           style: OutlinedButton.styleFrom(
