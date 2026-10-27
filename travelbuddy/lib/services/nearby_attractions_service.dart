@@ -1,4 +1,6 @@
 import 'package:geolocator/geolocator.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 class NearbyAttraction {
   final String name;
@@ -48,43 +50,49 @@ class NearbyAttractionsService {
     required double longitude,
     int radius = 5000,
   }) async {
-    await Future.delayed(const Duration(seconds: 2));
+    
+    final url = Uri.parse(
+      'https://en.wikipedia.org/w/api.php?'
+      'action=query&list=geosearch&gscoord=$latitude|$longitude'
+      '&gsradius=$radius&gslimit=10&format=json&origin=*'
+    );
 
-    print('DEBUG: Mocking API call for lat: $latitude, lon: $longitude');
+    print('Fetching from Wikipedia API...');
 
-    return [
-      NearbyAttraction(
-        name: 'Oshawa Museum',
-        address: '1450 Simcoe St S, Oshawa, ON',
-        rating: 4.3,
-        distanceKm: 1.8,
+    final response = await http.get(
+      url,
+      headers: {
+        'User-Agent': 'TravelBuddyApp/1.0 (Flutter; Educational Project)',
+      },
+    ).timeout(
+      const Duration(seconds: 15),
+      onTimeout: () {
+        throw Exception('Request timeout');
+      },
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to load attractions: HTTP ${response.statusCode}');
+    }
+
+    final data = jsonDecode(response.body);
+    final results = data['query']['geosearch'] as List<dynamic>? ?? [];
+
+    return results.map((item) {
+      final distMeters = (item['dist'] as num?)?.toDouble() ?? 0.0;
+      final title = item['title']?.toString() ?? 'Unknown';
+      final category = item['type']?.toString() ?? 'attraction';
+
+      String formattedCategory = category[0].toUpperCase() + category.substring(1);
+
+      return NearbyAttraction(
+        name: title,
+        address: item['primary']?.toString() ?? '$formattedCategory near you',
+        rating: 3.5 + (distMeters % 100) / 100 * 1.5,
+        distanceKm: (distMeters / 1000).roundToDouble(),
         imageUrl: 'https://dynamic-media-cdn.tripadvisor.com/media/photo-o/1b/7f/af/78/lakeview-park.jpg?w=1100&h=600&s=1',
-        category: 'Museum',
-      ),
-      NearbyAttraction(
-        name: 'Lakeview Park',
-        address: 'Lakeview Park, Oshawa, ON',
-        rating: 4.8,
-        distanceKm: 2.4,
-        imageUrl: 'https://dynamic-media-cdn.tripadvisor.com/media/photo-o/1b/7f/af/78/lakeview-park.jpg?w=1100&h=600&s=1',
-        category: 'Park',
-      ),
-      NearbyAttraction(
-        name: 'Parkwood Estate',
-        address: '270 Simcoe St S, Oshawa, ON',
-        rating: 4.6,
-        distanceKm: 3.1,
-        imageUrl: 'https://dynamic-media-cdn.tripadvisor.com/media/photo-o/1b/7f/af/78/lakeview-park.jpg?w=1100&h=600&s=1',
-        category: 'Historic Site',
-      ),
-      NearbyAttraction(
-        name: 'Robert McLaughlin Gallery',
-        address: '72 Queen St, Oshawa, ON',
-        rating: 4.5,
-        distanceKm: 3.5,
-        imageUrl: 'https://dynamic-media-cdn.tripadvisor.com/media/photo-o/1b/7f/af/78/lakeview-park.jpg?w=1100&h=600&s=1',
-        category: 'Art Gallery',
-      ),
-    ];
+        category: formattedCategory,
+      );
+    }).toList();
   }
 }
