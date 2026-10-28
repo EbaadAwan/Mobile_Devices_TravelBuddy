@@ -4,6 +4,10 @@
 <dict>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>We need your location to find nearby attractions.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>TravelBuddy uses the camera so you can add photos to your reviews.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>TravelBuddy lets you attach photos from your library to your reviews.</string>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>

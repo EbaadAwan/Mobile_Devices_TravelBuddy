@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'services/nearby_attractions_service.dart';
+import 'widgets/attraction_info_section.dart';
+import 'widgets/review_widgets.dart';
 
 void main() {
   runApp(const TravelBuddyApp());
@@ -950,8 +952,9 @@ class DestinationCard extends StatelessWidget {
                   const SizedBox(height: 5),
                   Row(
                     children: [
-                      Text(
-                        destination.rating.toStringAsFixed(1),
+                      AggregatedRatingText(
+                        attractionName: destination.name,
+                        fallbackRating: destination.rating,
                         style: const TextStyle(color: Colors.black54),
                       ),
                       const SizedBox(width: 3),
@@ -1064,7 +1067,10 @@ class PlannedStopCard extends StatelessWidget {
                   const SizedBox(height: 8),
                   Row(
                     children: [
-                      Text(destination.rating.toStringAsFixed(1)),
+                      AggregatedRatingText(
+                        attractionName: destination.name,
+                        fallbackRating: destination.rating,
+                      ),
                       const Icon(Icons.star, color: Colors.amber, size: 16),
                       const Spacer(),
                       Text(
@@ -1159,9 +1165,25 @@ void _showDetails(BuildContext context, Destination destination) {
               style: const TextStyle(fontSize: 23, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 5),
-            Text(
-              '${destination.rating} ★  ·  ${destination.distance}  ·  ${destination.location}',
-              style: const TextStyle(color: Colors.black54),
+            Row(
+              children: [
+                AggregatedRatingText(
+                  attractionName: destination.name,
+                  fallbackRating: destination.rating,
+                  showCount: true,
+                  style: const TextStyle(color: Colors.black54),
+                ),
+                const SizedBox(width: 2),
+                const Icon(Icons.star, color: Colors.amber, size: 17),
+                Flexible(
+                  child: Text(
+                    '  ·  ${destination.distance}  ·  ${destination.location}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(color: Colors.black54),
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 14),
             Text(destination.description),
@@ -1171,22 +1193,18 @@ void _showDetails(BuildContext context, Destination destination) {
                 const Icon(Icons.circle, color: Color(0xFF19D879), size: 10),
                 const SizedBox(width: 6),
                 Text('Currently: ${destination.activity}'),
-                const Spacer(),
-                Text(
-                  destination.hours,
-                  style: const TextStyle(fontSize: 11, color: Colors.black54),
-                ),
               ],
             ),
             const SizedBox(height: 18),
-            const Text(
-              'Reviews',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            AttractionInfoSection(
+              attractionName: destination.name,
+              location: destination.location,
+              fallbackHours: destination.hours,
             ),
-            const SizedBox(height: 8),
-            const Text(
-              'Reviews and live information can be connected to the API in a later milestone.',
-              style: TextStyle(color: Colors.black54),
+            const SizedBox(height: 22),
+            ReviewsSection(
+              attractionName: destination.name,
+              fallbackRating: destination.rating,
             ),
           ],
         ),
