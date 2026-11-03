@@ -2,6 +2,12 @@ import 'package:flutter/material.dart';
 import 'services/nearby_attractions_service.dart';
 import 'widgets/attraction_info_section.dart';
 import 'widgets/review_widgets.dart';
+// Brandon's self-contained trip, notification and crowd-status features.
+import 'features/trips/trip_editor_dialog.dart';
+import 'features/trips/trip_planner_screen.dart';
+import 'features/trips/trip_store.dart';
+import 'features/activity/activity_status_widgets.dart';
+import 'services/travel_notification_service.dart';
 
 void main() {
   runApp(const TravelBuddyApp());
@@ -136,36 +142,49 @@ class _TravelBuddyShellState extends State<TravelBuddyShell> {
   String _tripName = 'Toronto Trip';
   double _budget = 500;
 
+  @override
+  void initState() {
+    super.initState();
+    TripStore.instance.load();
+    TravelNotificationService.instance
+        .initialize(onSelectTab: (index) {
+          if (mounted) setState(() => _selectedTab = index);
+        })
+        .catchError((Object error) {
+          debugPrint('Notifications unavailable: $error');
+        });
+  }
+
   List<Destination> get _favorites => sampleDestinations
       .where((destination) => _favoriteNames.contains(destination.name))
       .toList();
 
-  void _toggleFavorite(Destination destination) {
+  Future<void> _toggleFavorite(Destination destination) async {
+    final added = !_favoriteNames.contains(destination.name);
     setState(() {
-      if (!_favoriteNames.add(destination.name)) {
+      if (added) {
+        _favoriteNames.add(destination.name);
+      } else {
         _favoriteNames.remove(destination.name);
       }
     });
+    if (added) {
+      try {
+        await TravelNotificationService.instance
+            .notifyFavoriteSaved(destination.name);
+      } catch (error) {
+        debugPrint('Favourite notification failed: $error');
+      }
+    }
   }
 
-  void _addStop(Destination destination) {
-    if (_plannedStops.any((stop) => stop.destination.name == destination.name)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${destination.name} is already in your trip.')),
-      );
-      return;
-    }
-    setState(() {
-      _plannedStops.add(
-        PlannedStop(
-          destination: destination,
-          dateTime: DateTime.now().add(const Duration(days: 3)),
-        ),
-      );
-    });
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('${destination.name} added to your trip.')),
+  Future<void> _addStop(Destination destination) async {
+    final saved = await TripEditorDialog.open(
+      context,
+      destinationName: destination.name,
+      destinationLocation: destination.location,
     );
+    if (saved && mounted) setState(() => _selectedTab = 2);
   }
 
   void _removeStop(PlannedStop stop) {
@@ -256,15 +275,7 @@ class _TravelBuddyShellState extends State<TravelBuddyShell> {
         onToggleFavorite: _toggleFavorite,
         onAddToTrip: _addStop,
       ),
-      TripPlannerPage(
-        tripName: _tripName,
-        budget: _budget,
-        stops: _plannedStops,
-        onEditTrip: _showTripDialog,
-        onEditBudget: _showBudgetDialog,
-        onAddDestination: () => _showDestinationPicker(),
-        onRemoveStop: _removeStop,
-      ),
+      TripPlannerFeature(onAddDestination: _showDestinationPicker),
     ];
 
     return Scaffold(
@@ -981,13 +992,12 @@ class DestinationCard extends StatelessWidget {
                   const SizedBox(height: 8),
                   Row(
                     children: [
-                      const Icon(Icons.circle, color: Color(0xFF19D879), size: 9),
-                      const SizedBox(width: 5),
-                      Text(
-                        'Currently: ${destination.activity}',
-                        style: const TextStyle(fontSize: 12),
+                      Expanded(
+                        child: ActivityStatusBadge(
+                          attractionName: destination.name,
+                          compact: true,
+                        ),
                       ),
-                      const Spacer(),
                       IconButton(
                         onPressed: onAddToTrip,
                         tooltip: 'Add to trip',
@@ -1188,13 +1198,7 @@ void _showDetails(BuildContext context, Destination destination) {
             const SizedBox(height: 14),
             Text(destination.description),
             const SizedBox(height: 12),
-            Row(
-              children: [
-                const Icon(Icons.circle, color: Color(0xFF19D879), size: 10),
-                const SizedBox(width: 6),
-                Text('Currently: ${destination.activity}'),
-              ],
-            ),
+            ActivityStatusPanel(attractionName: destination.name),
             const SizedBox(height: 18),
             AttractionInfoSection(
               attractionName: destination.name,
