@@ -1,12 +1,13 @@
 // Fetches live information about an attraction using two free, key-less HTTP APIs:
 //   1. OpenStreetMap Nominatim  -> address, coordinates, phone, website and opening hours (OSM "opening_hours" tag).
 //   2. Wikipedia REST summary   -> a short description and a photo.
-// Results are cached in memory so re-opening the same attraction does not make another request. 
+// Results are cached in memory so re-opening the same attraction does not make another request.
 // AttractionDetails also has toJson/fromJson so it can be saved for offline use later (local storage / offline support).
 
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 
 class AttractionDetails {
   const AttractionDetails({
@@ -49,18 +50,18 @@ class AttractionDetails {
       description != null;
 
   Map<String, dynamic> toJson() => {
-        'displayName': displayName,
-        'address': address,
-        'category': category,
-        'latitude': latitude,
-        'longitude': longitude,
-        'phone': phone,
-        'website': website,
-        'openingHoursRaw': openingHoursRaw,
-        'description': description,
-        'imageUrl': imageUrl,
-        'wikipediaUrl': wikipediaUrl,
-      };
+    'displayName': displayName,
+    'address': address,
+    'category': category,
+    'latitude': latitude,
+    'longitude': longitude,
+    'phone': phone,
+    'website': website,
+    'openingHoursRaw': openingHoursRaw,
+    'description': description,
+    'imageUrl': imageUrl,
+    'wikipediaUrl': wikipediaUrl,
+  };
 
   factory AttractionDetails.fromJson(Map<String, dynamic> json) {
     return AttractionDetails(
@@ -82,12 +83,14 @@ class AttractionDetails {
 class AttractionDetailsService {
   // Nominatim's usage policy requires an identifying User-Agent.
   static const Map<String, String> _headers = {
-    'User-Agent': 'TravelBuddy (CSCI 3101U student project) idk what to put here',
+    'User-Agent':
+        'TravelBuddy (CSCI 3101U student project) idk what to put here',
     'Accept': 'application/json',
   };
   static const Duration _timeout = Duration(seconds: 12);
 
   static final Map<String, AttractionDetails> _cache = {};
+  static const String _storagePrefix = 'attraction_details_';
 
   /// Looks up [name] (optionally near [location], e.g. "Oshawa, Ontario").
   ///
@@ -99,16 +102,51 @@ class AttractionDetailsService {
     String location = '',
     bool forceRefresh = false,
   }) async {
-    final cacheKey = '${name.trim().toLowerCase()}|${location.trim().toLowerCase()}';
+    final cacheKey =
+        '${name.trim().toLowerCase()}|${location.trim().toLowerCase()}';
     if (!forceRefresh && _cache.containsKey(cacheKey)) {
       return _cache[cacheKey]!;
     }
 
-    final place = await _searchPlace(name, location);
-    final extratags = (place?['extratags'] as Map?)?.cast<String, dynamic>() ?? {};
-    final addressParts = (place?['address'] as Map?)?.cast<String, dynamic>() ?? {};
+    final stored = await _readStored(cacheKey);
+    if (!forceRefresh && stored != null) {
+      _cache[cacheKey] = stored;
+      return stored;
+    }
 
-    final city = _firstString(addressParts, ['city', 'town', 'village', 'municipality']);
+    try {
+      return await _fetchAndStore(
+        cacheKey: cacheKey,
+        name: name,
+        location: location,
+      );
+    } catch (_) {
+      // A previously fetched detail sheet is still useful when offline.
+      if (stored != null) {
+        _cache[cacheKey] = stored;
+        return stored;
+      }
+      rethrow;
+    }
+  }
+
+  static Future<AttractionDetails> _fetchAndStore({
+    required String cacheKey,
+    required String name,
+    required String location,
+  }) async {
+    final place = await _searchPlace(name, location);
+    final extratags =
+        (place?['extratags'] as Map?)?.cast<String, dynamic>() ?? {};
+    final addressParts =
+        (place?['address'] as Map?)?.cast<String, dynamic>() ?? {};
+
+    final city = _firstString(addressParts, [
+      'city',
+      'town',
+      'village',
+      'municipality',
+    ]);
 
     // Wikipedia is a "nice to have": if it fails we still return OSM data.
     _WikiSummary? wiki;
@@ -124,7 +162,9 @@ class AttractionDetailsService {
 
     final details = AttractionDetails(
       displayName: place?['name'] as String?,
-      address: place == null ? null : _formatAddress(addressParts, place['display_name'] as String?),
+      address: place == null
+          ? null
+          : _formatAddress(addressParts, place['display_name'] as String?),
       category: place?['type'] as String?,
       latitude: double.tryParse('${place?['lat']}'),
       longitude: double.tryParse('${place?['lon']}'),
@@ -137,11 +177,32 @@ class AttractionDetailsService {
     );
 
     _cache[cacheKey] = details;
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setString(
+      '$_storagePrefix$cacheKey',
+      jsonEncode(details.toJson()),
+    );
     return details;
   }
 
+  static Future<AttractionDetails?> _readStored(String cacheKey) async {
+    final preferences = await SharedPreferences.getInstance();
+    final raw = preferences.getString('$_storagePrefix$cacheKey');
+    if (raw == null) return null;
+    try {
+      return AttractionDetails.fromJson(
+        (jsonDecode(raw) as Map).cast<String, dynamic>(),
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
   /// Searches Nominatim, first with the location for accuracy and then with the name alone if that found nothing.
-  static Future<Map<String, dynamic>?> _searchPlace(String name, String location) async {
+  static Future<Map<String, dynamic>?> _searchPlace(
+    String name,
+    String location,
+  ) async {
     final queries = <String>{
       if (location.trim().isNotEmpty) '${name.trim()}, ${location.trim()}',
       name.trim(),
@@ -174,7 +235,7 @@ class AttractionDetailsService {
   }) async {
     var language = 'en';
     var title = name.trim();
-    var trusted = false; 
+    var trusted = false;
 
     // OSM stores the article as "en:Article Title".
     if (wikipediaTag != null && wikipediaTag.contains(':')) {
@@ -188,11 +249,14 @@ class AttractionDetailsService {
     }
 
     final encodedTitle = Uri.encodeComponent(title.replaceAll(' ', '_'));
-    final uri = Uri.parse('https://$language.wikipedia.org/api/rest_v1/page/summary/$encodedTitle');
+    final uri = Uri.parse(
+      'https://$language.wikipedia.org/api/rest_v1/page/summary/$encodedTitle',
+    );
     final response = await http.get(uri, headers: _headers).timeout(_timeout);
     if (response.statusCode != 200) return null;
 
-    final json = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+    final json =
+        jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
     if (json['type'] == 'disambiguation') return null;
 
     final extract = (json['extract'] as String?)?.trim();
@@ -221,9 +285,10 @@ class AttractionDetailsService {
   }
 
   static String? _formatAddress(Map<String, dynamic> parts, String? fallback) {
-    final street = [parts['house_number'], parts['road']]
-        .whereType<String>()
-        .join(' ');
+    final street = [
+      parts['house_number'],
+      parts['road'],
+    ].whereType<String>().join(' ');
     final pieces = [
       if (street.isNotEmpty) street,
       _firstString(parts, ['city', 'town', 'village', 'municipality']),
@@ -235,8 +300,20 @@ class AttractionDetailsService {
   }
 
   static const Set<String> _genericWords = {
-    'park', 'street', 'road', 'avenue', 'downtown', 'city', 'centre',
-    'center', 'north', 'south', 'east', 'west', 'ontario', 'canada',
+    'park',
+    'street',
+    'road',
+    'avenue',
+    'downtown',
+    'city',
+    'centre',
+    'center',
+    'north',
+    'south',
+    'east',
+    'west',
+    'ontario',
+    'canada',
   };
 
   static Set<String> _locationWords(String location, String? city) {
@@ -287,7 +364,11 @@ class TimeRange {
 }
 
 class DayHours {
-  const DayHours({required this.dayName, required this.ranges, required this.isToday});
+  const DayHours({
+    required this.dayName,
+    required this.ranges,
+    required this.isToday,
+  });
 
   final String dayName;
 
@@ -299,7 +380,9 @@ class DayHours {
 
   String get label {
     if (ranges.isEmpty) return 'Closed';
-    if (ranges.length == 1 && ranges.first.start == 0 && ranges.first.end == 1440) {
+    if (ranges.length == 1 &&
+        ranges.first.start == 0 &&
+        ranges.first.end == 1440) {
       return 'Open 24 hours';
     }
     return ranges.join(', ');
@@ -320,22 +403,41 @@ class OpeningHours {
   /// Index 0 = Monday ... 6 = Sunday.
   final List<List<TimeRange>> _days;
 
-  static const List<String> _dayCodes = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
+  static const List<String> _dayCodes = [
+    'Mo',
+    'Tu',
+    'We',
+    'Th',
+    'Fr',
+    'Sa',
+    'Su',
+  ];
   static const List<String> _dayNames = [
-    'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday',
+    'Monday',
+    'Tuesday',
+    'Wednesday',
+    'Thursday',
+    'Friday',
+    'Saturday',
+    'Sunday',
   ];
 
   static final RegExp _rulePattern = RegExp(
     r'^((?:Mo|Tu|We|Th|Fr|Sa|Su)(?:\s*[-,]\s*(?:Mo|Tu|We|Th|Fr|Sa|Su))*)\s*(.*)$',
   );
-  static final RegExp _timePattern = RegExp(r'^(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})\+?$');
+  static final RegExp _timePattern = RegExp(
+    r'^(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})\+?$',
+  );
 
   static OpeningHours? tryParse(String? raw) {
     if (raw == null || raw.trim().isEmpty) return null;
     final text = raw.trim();
 
     if (text == '24/7') {
-      return OpeningHours._(text, List.generate(7, (_) => [const TimeRange(0, 1440)]));
+      return OpeningHours._(
+        text,
+        List.generate(7, (_) => [const TimeRange(0, 1440)]),
+      );
     }
 
     final days = List<List<TimeRange>?>.filled(7, null);
@@ -344,7 +446,8 @@ class OpeningHours {
     for (final part in text.split(';')) {
       // Public/school holiday rules can't be shown on a weekly table.
       final rule = part.trim().replaceAll(RegExp(r',\s*(PH|SH)\b'), '');
-      if (rule.isEmpty || rule.startsWith('PH') || rule.startsWith('SH')) continue;
+      if (rule.isEmpty || rule.startsWith('PH') || rule.startsWith('SH'))
+        continue;
 
       List<int> targetDays;
       String timePart;
@@ -353,14 +456,14 @@ class OpeningHours {
         targetDays = _expandDays(match.group(1)!);
         timePart = match.group(2)!.trim();
       } else {
-        targetDays = List.generate(7, (i) => i); 
+        targetDays = List.generate(7, (i) => i);
         timePart = rule;
       }
 
       final ranges = _parseTimes(timePart);
-      if (ranges == null) return null; 
+      if (ranges == null) return null;
       for (final day in targetDays) {
-        days[day] = ranges; 
+        days[day] = ranges;
       }
       anyRule = true;
     }
@@ -396,7 +499,8 @@ class OpeningHours {
     for (final piece in text.split(',')) {
       final match = _timePattern.firstMatch(piece.trim());
       if (match == null) return null;
-      final start = int.parse(match.group(1)!) * 60 + int.parse(match.group(2)!);
+      final start =
+          int.parse(match.group(1)!) * 60 + int.parse(match.group(2)!);
       final end = int.parse(match.group(3)!) * 60 + int.parse(match.group(4)!);
       ranges.add(TimeRange(start, end));
     }
@@ -408,7 +512,11 @@ class OpeningHours {
     final today = (now ?? DateTime.now()).weekday - 1;
     return List.generate(
       7,
-      (i) => DayHours(dayName: _dayNames[i], ranges: _days[i], isToday: i == today),
+      (i) => DayHours(
+        dayName: _dayNames[i],
+        ranges: _days[i],
+        isToday: i == today,
+      ),
     );
   }
 

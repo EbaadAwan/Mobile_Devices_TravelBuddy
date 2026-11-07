@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+
 import 'services/nearby_attractions_service.dart';
+import 'services/favorites_store.dart';
 import 'widgets/attraction_info_section.dart';
 import 'widgets/review_widgets.dart';
 // Brandon's self-contained trip, notification and crowd-status features.
@@ -46,9 +49,7 @@ class TravelBuddyApp extends StatelessWidget {
         cardTheme: CardThemeData(
           color: Colors.white,
           elevation: 1,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(4),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
         ),
       ),
       home: const TravelBuddyShell(),
@@ -84,30 +85,24 @@ const List<Destination> sampleDestinations = [
     location: 'Lakeview Park, Oshawa',
     rating: 4.3,
     distance: '1.8 km',
-    description:
-    'A historic site in Lakeview Park that tells the story of Oshawa through its local heritage.',
-    imageUrl:
-    'https://dynamic-media-cdn.tripadvisor.com/media/photo-o/1b/7f/af/78/lakeview-park.jpg?w=1100&h=600&s=1',
+    description: 'A historic site in Lakeview Park that tells the story of Oshawa through its local heritage.',
+    imageUrl: 'https://dynamic-media-cdn.tripadvisor.com/media/photo-o/1b/7f/af/78/lakeview-park.jpg?w=1100&h=600&s=1',
   ),
   Destination(
     name: 'Lakeview Park',
     location: 'Oshawa, Ontario',
     rating: 4.8,
     distance: '2.4 km',
-    description:
-    'A relaxing waterfront park with walking paths, green spaces, and views of Lake Ontario.',
-    imageUrl:
-    'https://dynamic-media-cdn.tripadvisor.com/media/photo-o/1b/7f/af/78/lakeview-park.jpg?w=1100&h=600&s=1',
+    description: 'A relaxing waterfront park with walking paths, green spaces, and views of Lake Ontario.',
+    imageUrl: 'https://dynamic-media-cdn.tripadvisor.com/media/photo-o/1b/7f/af/78/lakeview-park.jpg?w=1100&h=600&s=1',
   ),
   Destination(
     name: 'Parkwood Estate',
     location: ' downtown Oshawa',
     rating: 4.6,
     distance: '3.1 km',
-    description:
-    'Explore a historic estate with gardens, architecture, and seasonal tours.',
-    imageUrl:
-    'https://dynamic-media-cdn.tripadvisor.com/media/photo-o/1b/7f/af/78/lakeview-park.jpg?w=1100&h=600&s=1',
+    description: 'Explore a historic estate with gardens, architecture, and seasonal tours.',
+    imageUrl: 'https://dynamic-media-cdn.tripadvisor.com/media/photo-o/1b/7f/af/78/lakeview-park.jpg?w=1100&h=600&s=1',
   ),
 ];
 
@@ -128,6 +123,9 @@ class TravelBuddyShell extends StatefulWidget {
 class _TravelBuddyShellState extends State<TravelBuddyShell> {
   int _selectedTab = 0;
   final Set<String> _favoriteNames = {'Lakeview Park'};
+  final Map<String, Destination> _knownDestinations = {
+    for (final destination in sampleDestinations) destination.name: destination,
+  };
   final List<PlannedStop> _plannedStops = [
     PlannedStop(
       destination: sampleDestinations[1],
@@ -145,21 +143,38 @@ class _TravelBuddyShellState extends State<TravelBuddyShell> {
   @override
   void initState() {
     super.initState();
+    _loadFavorites();
     TripStore.instance.load();
     TravelNotificationService.instance
-        .initialize(onSelectTab: (index) {
-          if (mounted) setState(() => _selectedTab = index);
-        })
+        .initialize(
+          onSelectTab: (index) {
+            if (mounted) setState(() => _selectedTab = index);
+          },
+        )
         .catchError((Object error) {
           debugPrint('Notifications unavailable: $error');
         });
   }
 
-  List<Destination> get _favorites => sampleDestinations
+  Future<void> _loadFavorites() async {
+    final saved = await FavoritesStore.instance.load();
+    if (!mounted) return;
+    setState(() {
+      // Keep the sample favorite for a first install, then use the user's list.
+      if (saved != null) {
+        _favoriteNames
+          ..clear()
+          ..addAll(saved);
+      }
+    });
+  }
+
+  List<Destination> get _favorites => _knownDestinations.values
       .where((destination) => _favoriteNames.contains(destination.name))
       .toList();
 
   Future<void> _toggleFavorite(Destination destination) async {
+    _knownDestinations[destination.name] = destination;
     final added = !_favoriteNames.contains(destination.name);
     setState(() {
       if (added) {
@@ -168,10 +183,24 @@ class _TravelBuddyShellState extends State<TravelBuddyShell> {
         _favoriteNames.remove(destination.name);
       }
     });
+    await FavoritesStore.instance.save(_favoriteNames);
+    if (mounted) {
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(
+            content: Text(
+              added ? 'Saved to favourites.' : 'Removed from favourites.',
+            ),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+    }
     if (added) {
       try {
-        await TravelNotificationService.instance
-            .notifyFavoriteSaved(destination.name);
+        await TravelNotificationService.instance.notifyFavoriteSaved(
+          destination.name,
+        );
       } catch (error) {
         debugPrint('Favourite notification failed: $error');
       }
@@ -269,11 +298,13 @@ class _TravelBuddyShellState extends State<TravelBuddyShell> {
         onAddToTrip: _addStop,
         onOpenFavorites: () => setState(() => _selectedTab = 1),
         onOpenPlanner: () => setState(() => _selectedTab = 2),
+        onBackHome: () => setState(() => _selectedTab = 0),
       ),
       FavoritesPage(
         favorites: _favorites,
         onToggleFavorite: _toggleFavorite,
         onAddToTrip: _addStop,
+        onBackHome: () => setState(() => _selectedTab = 0),
       ),
       TripPlannerFeature(onAddDestination: _showDestinationPicker),
     ];
@@ -283,7 +314,11 @@ class _TravelBuddyShellState extends State<TravelBuddyShell> {
         child: Column(
           children: [
             _TravelBuddyHeader(
-              title: ['TravelBuddy', 'Favourites', 'Trip Planner'][_selectedTab],
+              title: [
+                'TravelBuddy',
+                'Favourites',
+                'Trip Planner',
+              ][_selectedTab],
               onMenuTap: _showMenu,
             ),
             Expanded(child: pages[_selectedTab]),
@@ -313,7 +348,7 @@ class _TravelBuddyShellState extends State<TravelBuddyShell> {
               ),
             ),
             ...sampleDestinations.map(
-                  (destination) => ListTile(
+              (destination) => ListTile(
                 leading: const Icon(Icons.place_outlined, color: travelCyan),
                 title: Text(destination.name),
                 subtitle: Text(destination.location),
@@ -369,10 +404,7 @@ class _TravelBuddyShellState extends State<TravelBuddyShell> {
 }
 
 class _TravelBuddyHeader extends StatelessWidget {
-  const _TravelBuddyHeader({
-    required this.title,
-    required this.onMenuTap,
-  });
+  const _TravelBuddyHeader({required this.title, required this.onMenuTap});
 
   final String title;
   final VoidCallback onMenuTap;
@@ -409,10 +441,7 @@ class _TravelBuddyHeader extends StatelessWidget {
 }
 
 class _BottomNavigation extends StatelessWidget {
-  const _BottomNavigation({
-    required this.selectedIndex,
-    required this.onTap,
-  });
+  const _BottomNavigation({required this.selectedIndex, required this.onTap});
 
   final int selectedIndex;
   final ValueChanged<int> onTap;
@@ -432,16 +461,16 @@ class _BottomNavigation extends StatelessWidget {
       backgroundColor: travelCyan,
       selectedItemColor: Colors.white,
       unselectedItemColor: Colors.white70,
-      selectedLabelStyle:
-      const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+      selectedLabelStyle: const TextStyle(
+        fontSize: 11,
+        fontWeight: FontWeight.bold,
+      ),
       unselectedLabelStyle: const TextStyle(fontSize: 11),
       items: items
           .map(
-            (item) => BottomNavigationBarItem(
-          icon: Icon(item.$1),
-          label: item.$2,
-        ),
-      )
+            (item) =>
+                BottomNavigationBarItem(icon: Icon(item.$1), label: item.$2),
+          )
           .toList(),
     );
   }
@@ -455,6 +484,7 @@ class HomePage extends StatefulWidget {
     required this.onAddToTrip,
     required this.onOpenFavorites,
     required this.onOpenPlanner,
+    required this.onBackHome,
   });
 
   final Set<String> favorites;
@@ -462,6 +492,7 @@ class HomePage extends StatefulWidget {
   final ValueChanged<Destination> onAddToTrip;
   final VoidCallback onOpenFavorites;
   final VoidCallback onOpenPlanner;
+  final VoidCallback onBackHome;
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -481,7 +512,8 @@ class _HomePageState extends State<HomePage> {
     });
 
     // 1. Check location permission
-    final hasPermission = await NearbyAttractionsService.checkLocationPermission();
+    final hasPermission =
+        await NearbyAttractionsService.checkLocationPermission();
     if (!hasPermission) {
       setState(() {
         _isLoadingNearby = false;
@@ -495,7 +527,8 @@ class _HomePageState extends State<HomePage> {
     if (position == null) {
       setState(() {
         _isLoadingNearby = false;
-        _nearbyError = 'Unable to get your current location. Make sure GPS is enabled.';
+        _nearbyError =
+            'Unable to get your current location. Make sure GPS is enabled.';
       });
       return;
     }
@@ -522,13 +555,13 @@ class _HomePageState extends State<HomePage> {
   Destination _toDestination(NearbyAttraction attraction) {
     return Destination(
       name: attraction.name,
-      location: attraction.address.isNotEmpty ? attraction.address : attraction.category,
+      location: attraction.address.isNotEmpty
+          ? attraction.address
+          : attraction.category,
       rating: attraction.rating > 0 ? attraction.rating : 4.0,
       distance: '${attraction.distanceKm.toStringAsFixed(1)} km',
       description: '${attraction.category} near you.',
-      imageUrl: attraction.imageUrl.isNotEmpty
-          ? attraction.imageUrl
-          : 'https://dynamic-media-cdn.tripadvisor.com/media/photo-o/1b/7f/af/78/lakeview-park.jpg?w=1100&h=600&s=1',
+      imageUrl: attraction.imageUrl.isNotEmpty ? attraction.imageUrl : 'https://dynamic-media-cdn.tripadvisor.com/media/photo-o/1b/7f/af/78/lakeview-park.jpg?w=1100&h=600&s=1',
       activity: 'Quiet',
     );
   }
@@ -585,11 +618,17 @@ class _HomePageState extends State<HomePage> {
             onPressed: _isLoadingNearby ? null : _findNearbyAttractions,
             icon: _isLoadingNearby
                 ? const SizedBox(
-                    width: 20, height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
                   )
                 : const Icon(Icons.my_location_rounded),
-            label: Text(_isLoadingNearby ? 'Finding...' : 'Find Nearby Attractions'),
+            label: Text(
+              _isLoadingNearby ? 'Finding...' : 'Find Nearby Attractions',
+            ),
             style: FilledButton.styleFrom(
               backgroundColor: travelCyan,
               foregroundColor: Colors.white,
@@ -634,7 +673,10 @@ class _HomePageState extends State<HomePage> {
               Expanded(
                 child: Text(
                   'Nearby attractions (${_nearbyResults.length})',
-                  style: const TextStyle(fontSize: 19, fontWeight: FontWeight.bold),
+                  style: const TextStyle(
+                    fontSize: 19,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
               TextButton.icon(
@@ -651,9 +693,15 @@ class _HomePageState extends State<HomePage> {
               child: DestinationCard(
                 destination: _toDestination(attraction),
                 isFavorite: widget.favorites.contains(attraction.name),
-                onToggleFavorite: () => widget.onToggleFavorite(_toDestination(attraction)),
-                onAddToTrip: () => widget.onAddToTrip(_toDestination(attraction)),
-                onTap: () => _showDetails(context, _toDestination(attraction)),
+                onToggleFavorite: () =>
+                    widget.onToggleFavorite(_toDestination(attraction)),
+                onAddToTrip: () =>
+                    widget.onAddToTrip(_toDestination(attraction)),
+                onTap: () => _showDetails(
+                  context,
+                  _toDestination(attraction),
+                  onBackHome: widget.onBackHome,
+                ),
               ),
             ),
           ),
@@ -683,7 +731,11 @@ class _HomePageState extends State<HomePage> {
                 isFavorite: widget.favorites.contains(destination.name),
                 onToggleFavorite: () => widget.onToggleFavorite(destination),
                 onAddToTrip: () => widget.onAddToTrip(destination),
-                onTap: () => _showDetails(context, destination),
+                onTap: () => _showDetails(
+                  context,
+                  destination,
+                  onBackHome: widget.onBackHome,
+                ),
               ),
             ),
           ),
@@ -711,11 +763,13 @@ class FavoritesPage extends StatelessWidget {
     required this.favorites,
     required this.onToggleFavorite,
     required this.onAddToTrip,
+    required this.onBackHome,
   });
 
   final List<Destination> favorites;
   final ValueChanged<Destination> onToggleFavorite;
   final ValueChanged<Destination> onAddToTrip;
+  final VoidCallback onBackHome;
 
   @override
   Widget build(BuildContext context) {
@@ -744,14 +798,15 @@ class FavoritesPage extends StatelessWidget {
           )
         else
           ...favorites.map(
-                (destination) => Padding(
+            (destination) => Padding(
               padding: const EdgeInsets.only(bottom: 12),
               child: DestinationCard(
                 destination: destination,
                 isFavorite: true,
                 onToggleFavorite: () => onToggleFavorite(destination),
                 onAddToTrip: () => onAddToTrip(destination),
-                onTap: () => _showDetails(context, destination),
+                onTap: () =>
+                    _showDetails(context, destination, onBackHome: onBackHome),
               ),
             ),
           ),
@@ -810,7 +865,7 @@ class TripPlannerPage extends StatelessWidget {
         const SizedBox(height: 4),
         Text(
           '${_formatDate(DateTime.now().add(const Duration(days: 3)))} - '
-              '${_formatDate(DateTime.now().add(const Duration(days: 5)))}',
+          '${_formatDate(DateTime.now().add(const Duration(days: 5)))}',
           style: const TextStyle(color: Colors.black54, fontSize: 12),
         ),
         const SizedBox(height: 16),
@@ -856,7 +911,7 @@ class TripPlannerPage extends StatelessWidget {
           )
         else
           ...stops.map(
-                (stop) => Padding(
+            (stop) => Padding(
               padding: const EdgeInsets.only(bottom: 10),
               child: PlannedStopCard(
                 stop: stop,
@@ -913,10 +968,13 @@ class DestinationCard extends StatelessWidget {
               children: [
                 AspectRatio(
                   aspectRatio: 2.25,
-                  child: Image.network(
-                    destination.imageUrl,
+                  child: CachedNetworkImage(
+                    imageUrl: destination.imageUrl,
                     fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) => Container(
+                    placeholder: (context, url) => const Center(
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                    errorWidget: (context, url, error) => Container(
                       color: const Color(0xFFD8EDF0),
                       child: const Center(
                         child: Icon(
@@ -1043,10 +1101,13 @@ class PlannedStopCard extends StatelessWidget {
             child: SizedBox(
               width: 92,
               height: 112,
-              child: Image.network(
-                destination.imageUrl,
+              child: CachedNetworkImage(
+                imageUrl: destination.imageUrl,
                 fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) => Container(
+                placeholder: (context, url) => const Center(
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+                errorWidget: (context, url, error) => Container(
                   color: const Color(0xFFD8EDF0),
                   child: const Icon(Icons.photo_outlined, color: travelCyan),
                 ),
@@ -1085,7 +1146,10 @@ class PlannedStopCard extends StatelessWidget {
                       const Spacer(),
                       Text(
                         _formatDate(stop.dateTime),
-                        style: const TextStyle(fontSize: 11, color: Colors.black54),
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: Colors.black54,
+                        ),
                       ),
                     ],
                   ),
@@ -1144,7 +1208,11 @@ class _EmptyState extends StatelessWidget {
   }
 }
 
-void _showDetails(BuildContext context, Destination destination) {
+void _showDetails(
+  BuildContext context,
+  Destination destination, {
+  required VoidCallback onBackHome,
+}) {
   showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
@@ -1155,14 +1223,28 @@ void _showDetails(BuildContext context, Destination destination) {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                onPressed: () {
+                  Navigator.pop(sheetContext);
+                  onBackHome();
+                },
+                icon: const Icon(Icons.arrow_back),
+                label: const Text('Back to homepage'),
+              ),
+            ),
             ClipRRect(
               borderRadius: BorderRadius.circular(5),
               child: AspectRatio(
                 aspectRatio: 16 / 9,
-                child: Image.network(
-                  destination.imageUrl,
+                child: CachedNetworkImage(
+                  imageUrl: destination.imageUrl,
                   fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) => Container(
+                  placeholder: (context, url) => const Center(
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                  errorWidget: (context, url, error) => Container(
                     color: const Color(0xFFD8EDF0),
                     child: const Icon(Icons.photo_outlined, size: 48),
                   ),
@@ -1219,8 +1301,18 @@ void _showDetails(BuildContext context, Destination destination) {
 
 String _formatDate(DateTime date) {
   const months = [
-    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
   ];
   return '${months[date.month - 1]} ${date.day}';
 }
