@@ -345,6 +345,138 @@ GroupXX_TravelBuddy_Part2.zip
 
 Replace **`XX`** with the group's actual number; the uploaded source does not establish that number. To assemble the package, copy the **contents** of `travelbuddy/` (not a second nested parent folder) into `code/`. Run `flutter clean` from the Flutter project before packaging to exclude generated `build/` and `.dart_tool/` directories. If screenshots are added to this README, also include their referenced `docs/screenshots/` files in the ZIP. Verify the extracted package builds on another Android-capable computer before submitting. **Only one group member submits for the team.**
 
-## Generative AI acknowledgement
+## Generative AI Acknowledgement
 
-In accordance with the course policy, AI assistance is disclosed here. The authors remain responsible for understanding, checking, testing and maintaining submitted material.
+In accordance with the CSCI 3101U – Mobile Devices course guidelines, our group acknowledges the use of generative AI tools during selected stages of the TravelBuddy application's development.
+
+AI tools were used to support programming, understanding Flutter concepts, troubleshooting, and documentation where applicable. Each group member is responsible for understanding, reviewing, testing, and explaining their contributions.
+
+### 1. Brandon D'sa — 100926532
+
+**AI Tool Used:** ChatGPT (OpenAI)
+
+**Areas of Contribution:** Trip Planner, Trip/Favourite Notifications, and Live Activity Status.
+
+#### Purpose of AI Use
+
+I used ChatGPT as a learning and development resource to better understand Flutter and Dart concepts relevant to my assigned features. This included learning how Flutter widgets handle user interactions, how application data can be managed, and how Android notifications are configured.
+
+AI also provided assistance with selected implementation details, troubleshooting, and testing. I reviewed and tested the resulting functionality using Android Studio and an Android emulator.
+
+#### AI Prompts — Learning-Focused Examples
+
+*The following are reconstructed examples of learning-focused questions relevant to the development process, not verbatim records of previously submitted prompts.*
+
+**Prompt 1 — Understanding Flutter Date and Time Pickers**
+
+> "Can you explain how Flutter's `showDatePicker()` and `showTimePicker()` methods work in Dart? I want to understand how selected dates and times can be displayed in a mobile application's interface."
+
+**Topic:** Flutter widgets, asynchronous functions, and user input.
+
+**Prompt 2 — Learning Form Validation in Flutter**
+
+> "How does Flutter's `Form` widget work with `TextFormField` and validators? Can you explain how validation messages are displayed when users leave required fields empty or enter invalid information?"
+
+**Topic:** Forms, input validation, and error handling.
+
+**Prompt 3 — Understanding Local Data Storage**
+
+> "Can you explain how the `shared_preferences` package works in Flutter? I'm learning how mobile applications store small amounts of data locally and retrieve that information when the application restarts."
+
+**Topic:** Local persistence, data management, and asynchronous operations.
+
+**Prompt 4 — Learning Android Notification Concepts**
+
+> "What is the difference between local notifications and push notifications in Flutter? Can you show me, via a coding example related to my project as to how notification permissions, notification channels, and scheduled reminders work on Android devices and how to implement it?"
+
+**Topic:** Android notifications, permissions, and scheduling.
+
+**Prompt 5 — Understanding Flutter State Management**
+
+> "Can you show me how `ChangeNotifier`, `setState()`, and stateful widgets work in Flutter? I want to understand how to code the  application's interface so it can automatically updates when a status changes, such as switching between Quiet, Moderate, and Busy. Or when I set a reminder for an upcoming event planned for the app"
+
+**Prompt 6 — Understanding How to Structure a Trip Planner Feature in Flutter**
+
+> "Can you provide a simple example of how to structure a Trip Planner feature in Flutter using Dart? I want to understand how to organize the different components, such as a trip data model, date and time pickers, form validation, and a screen for displaying planned visits. Please explain how these components interact and how I could approach implementing them step by step in an existing Flutter group project."
+
+**Topic:** Flutter application architecture, Dart file organization, reusable widgets, and feature implementation planning.
+
+**Purpose:** To better understand how to break down my assigned Trip Planner functionality into smaller, manageable components and organize the implementation within our group's existing Flutter application.
+
+**Topic:** State management, reactive user interfaces, and status indicators.
+
+#### Independent Work and Verification
+
+I was responsible for integrating and verifying the Trip Planner, notification functionality, and activity-status components within our group's TravelBuddy application. I reviewed the implementation, tested its functionality using an Android emulator, and worked through issues encountered during development.
+
+Generative AI assisted with understanding technical concepts, selected coding tasks, troubleshooting, and testing. The final work was reviewed and tested as part of our group's development process.
+
+### 2. Abdul Jawad Syed
+
+**AI Tool(s):** [Insert AI Tool Used]
+
+**Purpose:** [Describe How AI Was Used]
+
+**Prompt(s):**
+
+> [Insert Exact Prompt Used]
+
+**Contribution and Verification:**
+
+[Explain which parts of your assigned work received AI assistance and how you independently developed, reviewed, or tested the results.]
+
+---
+
+### 3. Daniel Grgic
+
+**AI Tool(s):** [Insert AI Tool Used]
+
+**Purpose:** [Describe How AI Was Used]
+
+**Prompt(s):**
+
+> [Insert Exact Prompt Used]
+
+**Contribution and Verification:**
+
+[Describe the specific assistance received and how the resulting work was reviewed or verified.]
+
+---
+
+### 4. Ebaadurrub Awan
+
+**AI Tool(s):** [Insert AI Tool Used]
+
+**Purpose:** [Describe How AI Was Used]
+
+**Prompt(s):**
+
+> [Insert Exact Prompt Used]
+
+**Contribution and Verification:**
+
+[Explain the specific AI-assisted tasks and your independent contribution.]
+
+---
+
+### 5. Levent Cakir
+
+**AI Tool(s):** [Insert AI Tool Used]
+
+**Purpose:** [Describe How AI Was Used]
+
+**Prompt(s):**
+
+> [Insert Exact Prompt Used]
+
+**Contribution and Verification:**
+
+[Identify the AI tools, relevant prompts, and how AI assistance contributed to your work.]
+
+---
+
+### Academic Integrity Statement
+
+All generative AI assistance is acknowledged in accordance with the course's academic integrity requirements. Group members remain responsible for understanding, verifying, debugging, and maintaining their submitted contributions.
+
+*Note: Each contributor should replace the placeholders above with their actual AI usage and prompts, or explicitly state that no generative AI tools were used. Brandon's quoted prompts are excerpts; the complete original requests should be retained or provided if required by the instructor.*
