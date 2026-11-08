@@ -421,7 +421,7 @@ Generative AI assisted with understanding technical concepts, selected coding ta
 
 ### 2. Abdul Jawad Syed
 
-**AI Tool(s):** [Insert AI Tool Used]
+**AI Tool(s):** Claude
 
 **Areas of Contribution:** Implemented the "Find Nearby Attractions" feature by integrating the geolocator package for GPS permissions and coordinates, and using the http package to make real API requests to the Wikipedia Geosearch API to fetch and display live location-based data.
 
@@ -430,6 +430,7 @@ Generative AI assisted with understanding technical concepts, selected coding ta
 **Prompt(s):**
 
 > Please write a service class that uses the geolocator package to get the user's current latitude/longitude, and then makes an HTTP GET request to a free public API (like Wikipedia or OpenStreetMap) to fetch nearby points of interest. It should return a list of objects with name, distance, and category.
+
 > My HTTP request to the Overpass API is failing with a 406 error and then a 502 timeout on the Android Emulator. Can you provide a fixed version of the code that handles User-Agent headers correctly, implements a timeout to prevent freezing, and tries multiple API mirrors?
 
 **Contribution and Verification:**
