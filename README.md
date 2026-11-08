@@ -423,15 +423,19 @@ Generative AI assisted with understanding technical concepts, selected coding ta
 
 **AI Tool(s):** [Insert AI Tool Used]
 
-**Purpose:** [Describe How AI Was Used]
+**Areas of Contribution:** Implemented the "Find Nearby Attractions" feature by integrating the geolocator package for GPS permissions and coordinates, and using the http package to make real API requests to the Wikipedia Geosearch API to fetch and display live location-based data.
+
+**Purpose:** I used AI to generate the service layer code that handles asynchronous HTTP requests and JSON parsing, as well as to troubleshoot emulator-specific network errors (like SSL handshake failures and API timeouts) that prevented the initial OpenStreetMap integration from working.
 
 **Prompt(s):**
 
-> [Insert Exact Prompt Used]
+> Please write a service class that uses the geolocator package to get the user's current latitude/longitude, and then makes an HTTP GET request to a free public API (like Wikipedia or OpenStreetMap) to fetch nearby points of interest. It should return a list of objects with name, distance, and category.
+> My HTTP request to the Overpass API is failing with a 406 error and then a 502 timeout on the Android Emulator. Can you provide a fixed version of the code that handles User-Agent headers correctly, implements a timeout to prevent freezing, and tries multiple API mirrors?
 
 **Contribution and Verification:**
 
-[Explain which parts of your assigned work received AI assistance and how you independently developed, reviewed, or tested the results.]
+AI Assistance: The AI generated the initial boilerplate for the NearbyAttractionsService class, including the logic for mapping raw JSON API responses to my Dart NearbyAttraction model. It also provided the specific HTTP headers required to bypass emulator security restrictions.
+Verification: I independently set up the Android Manifest permissions and iOS Info.plist configurations required for GPS access. I verified the functionality by manually setting the emulator's GPS coordinates to Oshawa (43.8971, -78.8658) via Extended Controls and confirming that the app successfully fetched real-world landmarks like the "Robert McLaughlin Gallery" and "Oshawa Museum" rather than returning mock data. I also reviewed the code to ensure error handling (try/catch blocks) was robust enough to display user-friendly messages if the API went offline.
 
 ---
 
