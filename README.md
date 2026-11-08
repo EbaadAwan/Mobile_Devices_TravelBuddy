@@ -436,6 +436,7 @@ Generative AI assisted with understanding technical concepts, selected coding ta
 **Contribution and Verification:**
 
 AI Assistance: The AI generated the initial boilerplate for the NearbyAttractionsService class, including the logic for mapping raw JSON API responses to my Dart NearbyAttraction model. It also provided the specific HTTP headers required to bypass emulator security restrictions.
+
 Verification: I independently set up the Android Manifest permissions and iOS Info.plist configurations required for GPS access. I verified the functionality by manually setting the emulator's GPS coordinates to Oshawa (43.8971, -78.8658) via Extended Controls and confirming that the app successfully fetched real-world landmarks like the "Robert McLaughlin Gallery" and "Oshawa Museum" rather than returning mock data. I also reviewed the code to ensure error handling (try/catch blocks) was robust enough to display user-friendly messages if the API went offline.
 
 ---
