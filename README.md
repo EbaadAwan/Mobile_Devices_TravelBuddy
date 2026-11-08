@@ -230,7 +230,7 @@ If compilation succeeds, open `http://localhost:3000`. This is useful for checki
 
 ## Test account and permissions
 
-**No login or registration is implemented in this checkpoint build. No test credentials are needed:** launch the app and use the main tabs directly. If your group adds authentication before submission, update this section with a working TA test account or guest-access instructions.
+**No login or registration is implemented in this checkpoint build. No test credentials are needed:** launch the app and use the main tabs directly. 
 
 | Access | Why it is requested | What to do during evaluation |
 | --- | --- | --- |
