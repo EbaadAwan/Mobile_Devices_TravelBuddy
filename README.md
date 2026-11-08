@@ -437,8 +437,6 @@ Generative AI assisted with understanding technical concepts, selected coding ta
 
 ### 3. Daniel Grgic
 
-### 3. Daniel Grgic
-
 **AI Tool(s):** Claude (Anthropic)
 
 **Areas of Contribution:** Reviews and ratings, HTTP requests for attraction details and opening hours, aggregated ratings and review lists.
@@ -467,17 +465,23 @@ AI assistance was used for the AttractionDetailsService (Nominatim and Wikipedia
 
 ### 4. Ebaadurrub Awan
 
-**AI Tool(s):** [Insert AI Tool Used]
+**AI Tool(s):** ChatGPT 5.6 Sol (Codex) - Medium
 
-**Purpose:** [Describe How AI Was Used]
+**Purpose:** Local storage, offline support, snackbars
 
 **Prompt(s):**
 
-> [Insert Exact Prompt Used]
+> “I would like to know how I may store a list of preferred tourist attractions using Flutter's shared_preferences. I am looking for help with understanding how to add the list to preferences once a user clicks a favorite button and then retrieve that list upon restarting the application.”
+
+> “How do I cache the detailed information about attractions (address, open times, description, url of picture) received through api in Flutter? Can you please describe in detail how I can cache this data locally so that my application will be able to display this data even though there is no connection to the Internet?”
+
+> “What does cached_network_image do in Flutter? I'd love some clarification on how it can load an image from a URL, store it on your device, and display a spinner/fallback image if it can't load?”
+
+> “Can you please provide me with guidance on how to display a snackbar in Flutter whenever a user adds/removes an attraction from their favorites? The goal here is to have the app display something very quick and informative, e.g., 'Added to Favorites', 'Removed from Favorites'.”
 
 **Contribution and Verification:**
 
-[Explain the specific AI-assisted tasks and your independent contribution.]
+I utilized AI to assist in implementing offline caching for attraction information and image data, a snack bar for user feedback, and local favorite storage. I implemented this by reviewing my own coding to integrate the new feature(s) into an already completed app, then verifying that all of these new features functioned as they should with respect to the apps overall flow through its navigation and attraction display screens.
 
 ---
 
