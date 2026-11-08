@@ -84,7 +84,7 @@ class AttractionDetailsService {
   // Nominatim's usage policy requires an identifying User-Agent.
   static const Map<String, String> _headers = {
     'User-Agent':
-        'TravelBuddy (CSCI 3101U student project) idk what to put here',
+        'TravelBuddy (CSCI 3101U student project, OTU)',
     'Accept': 'application/json',
   };
   static const Duration _timeout = Duration(seconds: 12);

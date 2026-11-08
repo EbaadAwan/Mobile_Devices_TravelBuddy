@@ -89,7 +89,7 @@ class NearbyAttractionsService {
         name: title,
         address: item['primary']?.toString() ?? '$formattedCategory near you',
         rating: 3.5 + (distMeters % 100) / 100 * 1.5,
-        distanceKm: (distMeters / 1000).roundToDouble(),
+        distanceKm: (distMeters / 100).round() / 10,
         imageUrl: 'https://dynamic-media-cdn.tripadvisor.com/media/photo-o/1b/7f/af/78/lakeview-park.jpg?w=1100&h=600&s=1',
         category: formattedCategory,
       );

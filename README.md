@@ -22,7 +22,7 @@ TravelBuddy is a Flutter application for travellers who want to explore nearby a
 - [Testing](#testing)
 - [Data sources and limitations](#data-sources-and-limitations)
 - [Team and development status](#team-and-development-status)
-- [Part 2 submission notes](#part-2-submission-notes)
+- [Submission contents](#submission-contents)
 - [Generative AI acknowledgement](#generative-ai-acknowledgement)
 
 ## Explore the app
@@ -31,23 +31,41 @@ TravelBuddy is a Flutter application for travellers who want to explore nearby a
 
 The **Home** tab initially displays sample attractions so the interface can be explored without first requesting a location. Tap **Find Nearby Attractions** to request device location and query Wikipedia's geographically nearby pages. Attraction cards provide a name, a displayed rating and distance, favourite controls, and an entry point to details.
 
-**(Add screenshot here — Home screen with the search field, “Find Nearby Attractions” button, and attraction cards. Suggested path: `docs/screenshots/home.png`.)**
-
-**(Add screenshot here — Results after tapping “Find Nearby Attractions” on an Android emulator with location enabled. Suggested path: `docs/screenshots/nearby-attractions.png`.)**
+<p>
+  <img src="screenshots_for_readme/home.png" alt="Home screen with search field, Find Nearby Attractions button and attraction cards" width="260">
+  <img src="screenshots_for_readme/nearby_attractions.png" alt="Nearby attractions found in Oshawa after tapping Find Nearby Attractions" width="260">
+</p>
 
 ### View details and write reviews
 
-Selecting an attraction opens its detail sheet. The app requests additional place information through OpenStreetMap Nominatim and Wikipedia, where available, and provides a **Reviews** section. Users can give a 1–5-star rating, write text, attach photos using the device picker, inspect reviews, sort/filter them, and remove their own local reviews.
+Selecting an attraction opens its detail sheet.
 
-**(Add screenshot here — Attraction detail sheet showing place information, activity-status panel, and reviews. Suggested path: `docs/screenshots/attraction-details.png`.)**
+**Place information (HTTP).** The sheet sends HTTP requests to OpenStreetMap **Nominatim** (address, phone, website and the OSM `opening_hours` tag) and the **Wikipedia REST summary** API (short description and photo). Where they are available, it shows:
 
-**(Add screenshot here — Review form showing star selection and optional photo controls. Suggested path: `docs/screenshots/write-review.png`.)**
+- A weekly **opening-hours table** with today highlighted and an **Open now / Closed now** chip. Common OSM formats (for example `Mo-Fr 09:00-17:00; Su off` or `24/7`) are parsed; unusual formats are shown as the raw text.
+- Address, phone number, website, and a Wikipedia description.
+- A loading indicator while the requests run, and a **Retry** button if the network request fails. If the API has no hours, the sheet falls back to the attraction's listed hours, marked as *not confirmed online*.
+
+Fetched details are cached in memory and saved with `shared_preferences`, so an attraction that was opened before can still show its details offline.
+
+**Ratings and reviews.** The **Reviews** section shows an aggregated rating (average, review count, and a 1–5 star breakdown). The same average replaces the placeholder rating on attraction and visit cards once an attraction has reviews.
+
+- **Write a review** opens a form: a required 1–5 star rating, an optional name (up to 30 characters), and review text (10–500 characters, validated). Users can attach up to four photos from the **camera or gallery**; a confirmation dialog appears if they leave with unsaved changes.
+- **See all reviews** opens a list that can be **sorted** (Newest, Highest rated, Lowest rated) and **filtered by star value**. Users can delete their own reviews after a confirmation dialog, and a SnackBar confirms the result.
+- Reviews and their photos are stored **on the device only**; photos are copied into the app's documents folder so they survive a restart.
+
+<p>
+  <img src="screenshots_for_readme/attraction_details.PNG" alt="Attraction detail sheet with place information and opening hours" width="260">
+  <img src="screenshots_for_readme/attraction_reviews.PNG" alt="Reviews section with aggregated rating and star breakdown" width="260">
+</p>
+
+<img src="screenshots_for_readme/write_review.png" alt="Write a review form with star rating, text and an attached photo" width="260">
 
 ### Save favourite places
 
 Tap the heart on an attraction to save or remove it. The **Favourites** tab shows saved attractions, and the application displays a SnackBar for the action. On Android, saving a favourite can also issue an immediate **local** notification if permission is granted.
 
-**(Add screenshot here — Favourites tab containing at least one saved destination. Suggested path: `docs/screenshots/favourites.png`.)**
+<img src="screenshots_for_readme/favorites.PNG" alt="Favourites tab with saved attractions" width="260">
 
 ### Plan visits and receive reminders
 
@@ -59,35 +77,36 @@ The **Trip Planner** tab allows a user to:
 - Rename the trip and adjust its budget. The displayed **$35-per-visit** cost is illustrative, **not a live price or booking estimate**.
 - Schedule an Android local reminder when the planned visit and notification permissions allow it; cancel the associated reminder on deletion.
 
-**(Add screenshot here — Trip Planner with an upcoming visit card, budget, and “Create a Visit” action. Suggested path: `docs/screenshots/trip-planner.png`.)**
+<p>
+  <img src="screenshots_for_readme/trip_planner.PNG" alt="Trip Planner with upcoming visit cards and budget" width="260">
+  <img src="screenshots_for_readme/visit_dialog.png" alt="Plan a visit dialog with title, destination, date and time fields" width="260">
+</p>
 
-**(Add screenshot here — “Plan a visit” dialog with title/destination fields and date/time selectors visible. Suggested path: `docs/screenshots/visit-dialog.png`.)**
-
-**(Add screenshot here — Android notification shade showing a TravelBuddy trip reminder. Suggested path: `docs/screenshots/trip-reminder.png`.)**
+<img src="screenshots_for_readme/trip_reminder.PNG" alt="Android notification shade showing a TravelBuddy trip reminder" width="260">
 
 ### See attraction activity status
 
 Activity badges appear on attraction and visit cards. The details panel has **Quiet**, **Moderate**, **Busy**, and **Reset** controls for a **demonstration only**. Until a verified crowd-data service is connected, attractions show **Unavailable · No data**, and manually selected values are explicitly labelled **DEMO**; they are not real-time crowd measurements.
 
-**(Add screenshot here — Attraction activity panel showing a status marked “DEMO” and the status controls. Suggested path: `docs/screenshots/activity-demo.png`.)**
+<img src="screenshots_for_readme/activity_demo.PNG" alt="Activity panel showing a Busy status labelled DEMO" width="260">
 
 ## Feature status
 
-The statuses below describe functionality present in the supplied source code; they are **not** a claim that every device/API scenario has been independently retested for this README.
+Tested on a Pixel 9 Android emulator (Android 17, API 37) with Flutter 3.47.4. Features that rely on GPS, the internet, or notification permissions should also be checked on the grader's device.
 
 | Area | Check-in state | Where to find it / scope |
 | --- | --- | --- |
-| Home and destination cards | **Implemented** | Home tab; seeded cards before location search |
+| Home and destination cards | **Implemented** | Home tab; sample cards shown before a location search |
 | Nearby attraction discovery | **Implemented with limitations** | Home → **Find Nearby Attractions**; GPS permission, Wikipedia geo-search, internet required |
-| Place details | **Implemented with limitations** | Tap an attraction; Nominatim/Wikipedia fields are dependent on available source data |
+| Place details and opening hours | **Implemented with limitations** | Tap an attraction; Nominatim/Wikipedia HTTP requests, weekly hours table, Open now chip, retry on failure, offline cache. Fields depend on available source data |
 | Favourites | **Implemented** | Heart buttons and Favourites tab; stored locally |
-| Ratings and reviews | **Implemented locally** | Attraction details → Reviews; text, star rating, optional photos, sorting/filtering |
+| Ratings and reviews | **Implemented locally** | Attraction details → Reviews; validated review form, star rating, camera/gallery photos, aggregated average and star breakdown, sort and star filter, delete with confirmation |
 | Trip Planner | **Implemented** | Trip Planner tab; forms, pickers, validation, create/edit/delete, local persistence |
 | Notifications | **Implemented for Android locally** | Favourite-save alerts, test notification, scheduled visit reminders; **not remote push** |
 | Activity status | **Demonstration** | Attraction detail panel; manually selected crowd levels, **not live data** |
 | Navigation menu | **Implemented as a bottom sheet** | Top-right menu; links to Home, Favourites, and Trip Planner |
 | Adjustable UI settings | **Not yet implemented** | Menu currently has navigation choices, not working theme/text-size controls |
-| Search by typed keyword | **Not yet implemented** | Search field currently shows a feedback message rather than performing a search |
+| Search by typed keyword | **Not yet implemented** | Search field is visible but not connected yet; typing shows a placeholder message |
 
 ## Technology stack
 
@@ -239,20 +258,19 @@ If compilation succeeds, open `http://localhost:3000`. This is useful for checki
 | Android notifications | Show favourite alerts and planned-visit reminders | Allow when prompted; inspect the notification shade |
 | Camera/photo library | Attach an optional image to a review | Grant access only when testing photo attachments |
 
-**No API key is configured in the uploaded project** for its Wikipedia/Nominatim requests. These public services can be unavailable, incomplete, or subject to usage policies; there is no guarantee that a particular attraction will return full details. The current Nominatim User-Agent identification should be reviewed by the team before wider distribution.
+**No API key is needed** for the Wikipedia/Nominatim requests. These public services can be unavailable, incomplete, or subject to usage policies; there is no guarantee that a particular attraction will return full details.
 
 ## Suggested evaluation walkthrough
 
 A short path through the currently implemented functionality:
 
 1. Open **Home** to view sample destination cards; optionally tap **Find Nearby Attractions** to exercise location permission and HTTP requests.
-2. Tap an attraction to inspect details, reviews, and the activity panel. Set **Busy** and confirm the label says **DEMO**.
-3. Save an attraction with its heart icon; visit **Favourites** and look for the SnackBar / Android local notification.
-4. Open **Trip Planner**; tap **Create a Visit**. Test an empty title/destination to observe validation, then select a future date and time, confirm, and save.
-5. Edit or delete the visit; restart the app to check local persistence. The **Send test notification** control is available in Trip Planner for Android notification testing.
-6. Open the top-right menu to inspect navigation choices. **Adjustable UI settings are still a known gap**, so do not present them as complete.
-
-For the assignment's **two-minute demo video**, record the **actual submitted Android version** with readable on-screen captions and realistic sample data. The report and demo are **separate required deliverables**; this README does not replace either one.
+2. Tap an attraction to inspect its details, opening hours, reviews, and the activity panel. Set **Busy** and confirm the label says **DEMO**.
+3. In **Reviews**, tap **Write a review**. Try posting with no stars or very short text to see validation, then choose a rating, add text (and optionally a photo), and post. The aggregated rating updates on the sheet and on the attraction's card. Open **See all reviews** to try sorting, the star filter, and deleting your review.
+4. Save an attraction with its heart icon; visit **Favourites** and look for the SnackBar / Android local notification.
+5. Open **Trip Planner**; tap **Create a Visit**. Test an empty title/destination to observe validation, then select a future date and time, confirm, and save.
+6. Edit or delete the visit; restart the app to check local persistence (trips, favourites and reviews should all still be there). The **Send test notification** control is available in Trip Planner for Android notification testing.
+7. Open the top-right menu to see the navigation choices. Adjustable UI settings (theme, text size) are not implemented yet.
 
 ## Project structure
 
@@ -261,16 +279,18 @@ The top-level GitHub repository contains a `travelbuddy/` Flutter application:
 ```text
 Mobile_Devices_TravelBuddy/
 ├── README.md                     # Repository overview and setup (this file)
+├── screenshots_for_readme/       # Android screenshots shown in this README
 └── travelbuddy/
     ├── lib/
     │   ├── main.dart              # App theme, shell, tabs, destination cards/details
     │   ├── features/
     │   │   ├── trips/             # Visit model, editor, storage, planner screen
     │   │   └── activity/          # Crowd-status state and demo UI
-    │   ├── screens/               # Review screens
-    │   ├── services/              # Nearby search, place details, reviews,
+    │   ├── screens/               # All-reviews list and write-review form
+    │   ├── services/              # Nearby search, place details + opening-hours
+    │   │                          # parser, reviews + rating summary,
     │   │                          # favourites, Android notifications
-    │   └── widgets/               # Place details and review widgets
+    │   └── widgets/               # Place-info/hours section, review and rating widgets
     ├── test/                      # Widget, trip-model and activity-status tests
     ├── android/                   # Android app manifest and Gradle configuration
     ├── ios/                       # Flutter platform scaffolding
@@ -298,13 +318,14 @@ To run the two focused model/status tests individually:
 flutter test test/trip_plan_test.dart test/activity_status_service_test.dart
 ```
 
-The checked-in tests cover trip JSON serialization, editing without changing visit identity, activity-status defaults, and demo-status labelling. A basic widget test also checks for the application shell/tabs. **Native notification delivery, permission prompts, API responses, and the full user journey require manual Android testing**; passing unit tests does not establish those outcomes.
+The checked-in tests cover trip JSON serialization, editing without changing visit identity, activity-status defaults, and demo-status labelling. A basic widget test also checks for the application shell/tabs. Reviews, rating aggregation and opening-hours parsing do not have automated tests yet; they are covered by manual testing on Android. **Native notification delivery, permission prompts, API responses, and the full user journey require manual Android testing**; passing unit tests does not establish those outcomes.
 
 ## Data sources and limitations
 
-- **Nearby results:** Wikipedia GeoSearch uses current device coordinates; seeded example cards are shown before searching. Results can vary by location and internet access.
-- **Ratings and images:** Some API-result ratings are **illustrative values** computed in the current implementation; default card images can be reused placeholders. They should not be interpreted as verified public ratings or photos of every returned place.
-- **Details:** Nominatim/Wikipedia provide data when available. Place details are cached using in-memory and local mechanisms, but **complete offline browsing is not promised**.
+- **Nearby results:** Wikipedia GeoSearch uses current device coordinates; sample cards are shown before searching. Results can vary by location and internet access.
+- **Ratings and images:** Until an attraction has user reviews, its card rating is an **illustrative value** (for Wikipedia results it is derived from distance, not from real reviews). Once reviews exist, cards show the **average of the reviews saved on this device**. Default card images can be reused placeholders. Neither should be read as verified public ratings or photos of every returned place.
+- **Details:** Nominatim/Wikipedia provide data when available. Place details are cached in memory and in `shared_preferences`, so previously opened attractions can show details offline, but **complete offline browsing is not promised**.
+- **Opening hours:** Hours come from the OpenStreetMap `opening_hours` tag, which is community-maintained and may be missing or out of date. Public-holiday rules are ignored, and seasonal or sunrise/sunset rules are shown as raw text rather than as a table.
 - **Reviews and favourites:** User-created content is saved **on the device**, not synced to a shared server or another user's account.
 - **Reminders:** Notifications are **local Android notifications**, not Firebase Cloud Messaging or email. Current scheduling normally uses a two-day lead time for distant visits and a short lead time for near-term demo visits; Android can delay inexact alarms.
 - **Crowd information:** The current **Quiet / Moderate / Busy** controls are **simulated**. Connecting a trustworthy external crowd-data source is future work.
@@ -312,9 +333,7 @@ The checked-in tests cover trip JSON serialization, editing without changing vis
 
 ## Team and development status
 
-The original project proposal assigned responsibility areas as follows; the team should confirm any updates to its **current** ownership in the separate progress report.
-
-| Contributor | Original responsibility area |
+| Contributor | Responsibility area |
 | --- | --- |
 | Abdul Jawad Syed | Location permissions, nearby discovery, external APIs |
 | Brandon D'sa | Trip Planner, trip/favourite notifications, activity status |
@@ -322,28 +341,17 @@ The original project proposal assigned responsibility areas as follows; the team
 | Ebaadurrub Awan | Favourites, local storage and offline support |
 | Levent Cakir | UI/UX, navigation and attraction presentation |
 
-**Current milestone:** Part 2 check-in — November 9, 2026. **Final project deadline:** December 6, 2026. The separate progress report should document completed and outstanding tasks, changes from the proposal, known issues, and each member's actual contributions.
+**Current milestone:** Part 2 check-in — November 9, 2026. **Final project deadline:** December 6, 2026. Completed work, remaining work and each member's contributions are detailed in the progress report.
 
-## Part 2 submission notes
+## Submission contents
 
-The course guide requires **one ZIP file** containing a root-level README, a PDF progress report, an MP4 demo (maximum two minutes), and the runnable Flutter project:
-
-```text
-GroupXX_TravelBuddy_Part2.zip
-├── README.md
-├── report/
-│   └── GroupXX_ProgressReport.pdf
-├── video/
-│   └── GroupXX_Demo.mp4
-└── code/
-    ├── lib/
-    ├── test/
-    ├── android/
-    ├── ios/ ...                  # Any other included Flutter platform folders
-    └── pubspec.yaml
-```
-
-Replace **`XX`** with the group's actual number; the uploaded source does not establish that number. To assemble the package, copy the **contents** of `travelbuddy/` (not a second nested parent folder) into `code/`. Run `flutter clean` from the Flutter project before packaging to exclude generated `build/` and `.dart_tool/` directories. If screenshots are added to this README, also include their referenced `docs/screenshots/` files in the ZIP. Verify the extracted package builds on another Android-capable computer before submitting. **Only one group member submits for the team.**
+| Item | What it contains |
+| --- | --- |
+| `README.md` | This file: overview, setup, permissions and AI acknowledgement |
+| `screenshots_for_readme/` | Android screenshots used in this README |
+| `report/` | Mid-course progress report (PDF) |
+| `video/` | Demo video (MP4, under two minutes) |
+| `code/` | The Flutter project. Open this folder, then run `flutter pub get` and `flutter run` |
 
 ## Generative AI Acknowledgement
 
@@ -429,17 +437,31 @@ Generative AI assisted with understanding technical concepts, selected coding ta
 
 ### 3. Daniel Grgic
 
-**AI Tool(s):** [Insert AI Tool Used]
+### 3. Daniel Grgic
 
-**Purpose:** [Describe How AI Was Used]
+**AI Tool(s):** Claude (Anthropic)
+
+**Areas of Contribution:** Reviews and ratings, HTTP requests for attraction details and opening hours, aggregated ratings and review lists.
+
+**Purpose:** I used Claude to find free, key-less public APIs that I used to provide attraction details and opening hours, and to understand how to connect them to our app. This includes how to send the HTTP requests, what each API returns, how to follow the services' usage rules, and how to turn the returned data into something the app can display.
 
 **Prompt(s):**
 
-> [Insert Exact Prompt Used]
+*Unfortunately I deleted the conversation because I didn't think that I'd need to remember any of the prompts word for word, so the following is more or less a guess based on what I remember needing it for:*
+
+> "What free APIs are there that don't need an API key or billing that I could use in a Flutter app to get details about tourist attractions like address, phone number, website and opening hours?"
+
+> "How do I use OpenStreetMap Nominatim from Flutter to search for a place by name and get its opening hours? What do the extratags and addressdetails parameters do, and what are the rules I need to follow if any?"
+
+> "How can I use the Wikipedia REST API to get a short description and image for an attraction, and how do I avoid showing the wrong article when the name matches a different place?"
+
+> "OpenStreetMap gives opening hours as a string like Mo-Fr 09:00-17:00; Sa 10:00-16:00; Su off. How can I parse that in Dart into a weekly schedule and work out whether a place is open right now?"
+
+> "How do I handle timeouts, failed requests and missing data from these APIs in Flutter, so the app shows a loading state, a retry option, and fallback information instead of crashing?"
 
 **Contribution and Verification:**
 
-[Describe the specific assistance received and how the resulting work was reviewed or verified.]
+AI assistance was used for the AttractionDetailsService (Nominatim and Wikipedia requests), the opening-hours parser, and the error handling in AttractionInfoSection. I used the suggested code in the attraction details sheet and connected it to the rest of the app. I tested it on an Android emulator using real Oshawa and Toronto attractions, checking that hours, addresses and descriptions loaded correctly, that the Open now and Closed now status matched the listed hours, and that turning off the network showed the Retry button and fallback hours.
 
 ---
 
@@ -479,4 +501,4 @@ Generative AI assisted with understanding technical concepts, selected coding ta
 
 All generative AI assistance is acknowledged in accordance with the course's academic integrity requirements. Group members remain responsible for understanding, verifying, debugging, and maintaining their submitted contributions.
 
-*Note: Each contributor should replace the placeholders above with their actual AI usage and prompts, or explicitly state that no generative AI tools were used. Brandon's quoted prompts are excerpts; the complete original requests should be retained or provided if required by the instructor.*
+*Note: Each contributor should replace the placeholders above with their actual AI usage and prompts, or explicitly state that no generative AI tools were used. Brandon's quoted prompts are excerpts; the complete original requests should be retained or provided if required by the instructor. The last person to add their portion should be fine to remove this note afterward*
