@@ -353,7 +353,7 @@ AI tools were used to support programming, understanding Flutter concepts, troub
 
 ### 1. Brandon D'sa — 100926532
 
-**AI Tool Used:** ChatGPT (OpenAI)
+**AI Tool Used:** ChatGPT 5.6 Sol (Codex) - Medium 
 
 **Areas of Contribution:** Trip Planner, Trip/Favourite Notifications, and Live Activity Status.
 
