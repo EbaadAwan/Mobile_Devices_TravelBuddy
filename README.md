@@ -493,17 +493,21 @@ I utilized AI to assist in implementing offline caching for attraction informati
 
 ### 5. Levent Cakir
 
-**AI Tool(s):** [Insert AI Tool Used]
+**AI Tool(s):** Claude
 
-**Purpose:** [Describe How AI Was Used]
+**Purpose:** UI Help and Assistance
 
 **Prompt(s):**
 
-> [Insert Exact Prompt Used]
+> "Fill in a list of sample destinations according to the mockup images provided, write and include attributes like name, location, rating, distance, description and the imageurl for the thumbnail image."
+
+> "SizedBox(...) (Code Section) is giving me this error (Image File) I am unfamiliar with. Please explain the issue and provide a solution."
+
+> "Write helper functions to format date and time each according to the following (Code Section)"
 
 **Contribution and Verification:**
 
-[Identify the AI tools, relevant prompts, and how AI assistance contributed to your work.]
+AI was mainly used to fill in for tasks I found more tedious like creating the initial templates for the locations in the base UI before other features were implemented by others. More prompts were used for general knowledge and research to learn about dart and more UI elements but those prompts were lost and in large numbers. AI was also helpful in error solving and explaining error messages I could not decipher.
 
 ---
 
