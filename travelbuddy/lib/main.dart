@@ -11,6 +11,7 @@ import 'features/trips/trip_planner_screen.dart';
 import 'features/trips/trip_store.dart';
 import 'features/activity/activity_status_widgets.dart';
 import 'services/travel_notification_service.dart';
+import 'features/reminders/reminder_banner.dart';
 
 void main() {
   runApp(const TravelBuddyApp());
@@ -52,7 +53,7 @@ class TravelBuddyApp extends StatelessWidget {
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
         ),
       ),
-      home: const TravelBuddyShell(),
+      home: const TravelBuddyReminderOverlay(child: TravelBuddyShell()),
     );
   }
 }
