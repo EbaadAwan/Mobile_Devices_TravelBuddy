@@ -5,6 +5,9 @@ import '../activity/activity_status_widgets.dart';
 import 'trip_editor_dialog.dart';
 import 'trip_plan.dart';
 import 'trip_store.dart';
+import '../reminders/trip_focus_controller.dart';
+import '../reminders/visit_countdown.dart';
+import '../reminders/reminder_banner.dart';
 
 const _cyan = Color(0xFF08C6DF);
 
@@ -20,11 +23,37 @@ class TripPlannerFeature extends StatefulWidget {
 
 class _TripPlannerFeatureState extends State<TripPlannerFeature> {
   final _store = TripStore.instance;
+  final Map<String, GlobalKey> _cardKeys = {};
+
+  void _focusVisit() {
+    if (!mounted) return;
+    setState(() {});
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final id = TripFocusController.instance.tripId;
+      final target = id == null ? null : _cardKeys[id]?.currentContext;
+      if (target != null) {
+        Scrollable.ensureVisible(target,
+            duration: const Duration(milliseconds: 350),
+            alignment: 0.15);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    TripFocusController.instance.removeListener(_focusVisit);
+    _store.removeListener(_focusVisit);
+    super.dispose();
+  }
 
   @override
   void initState() {
     super.initState();
     _store.load();
+    TripFocusController.instance.addListener(_focusVisit);
+    _store.addListener(_focusVisit);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _focusVisit());
   }
 
   void _message(String message) {
@@ -102,6 +131,11 @@ class _TripPlannerFeatureState extends State<TripPlannerFeature> {
     } catch (_) {
       _message('Unable to remove this visit.');
     }
+  }
+
+  void _previewInAppBanner() {
+    final trips = _store.upcoming;
+    ReminderBannerBus.instance.preview(trips.isEmpty ? null : trips.first);
   }
 
   Future<void> _testNotification() async {
@@ -233,6 +267,8 @@ class _TripPlannerFeatureState extends State<TripPlannerFeature> {
                 Padding(
                   padding: const EdgeInsets.only(bottom: 10),
                   child: _VisitCard(
+                    key: _cardKeys.putIfAbsent(trip.id, () => GlobalKey()),
+                    focused: TripFocusController.instance.tripId == trip.id,
                     trip: trip,
                     onEdit: () => TripEditorDialog.open(context, existing: trip),
                     onDelete: () => _delete(trip),
@@ -267,6 +303,8 @@ class _TripPlannerFeatureState extends State<TripPlannerFeature> {
                     Padding(
                       padding: const EdgeInsets.only(bottom: 10),
                       child: _VisitCard(
+                        key: _cardKeys.putIfAbsent(trip.id, () => GlobalKey()),
+                        focused: TripFocusController.instance.tripId == trip.id,
                         trip: trip,
                         onEdit: () => TripEditorDialog.open(context, existing: trip),
                         onDelete: () => _delete(trip),
@@ -291,6 +329,11 @@ class _TripPlannerFeatureState extends State<TripPlannerFeature> {
               icon: const Icon(Icons.notifications_active_outlined),
               label: const Text('Send test notification'),
             ),
+            OutlinedButton.icon(
+              onPressed: _previewInAppBanner,
+              icon: const Icon(Icons.announcement_outlined),
+              label: const Text('Preview in-app reminder banner'),
+            ),
           ],
         );
       },
@@ -300,11 +343,14 @@ class _TripPlannerFeatureState extends State<TripPlannerFeature> {
 
 class _VisitCard extends StatelessWidget {
   const _VisitCard({
+    super.key,
+    this.focused = false,
     required this.trip,
     required this.onEdit,
     required this.onDelete,
   });
   final TripPlan trip;
+  final bool focused;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
 
@@ -316,6 +362,7 @@ class _VisitCard extends StatelessWidget {
     );
     return Card(
       margin: EdgeInsets.zero,
+      color: focused ? const Color(0xFFE9FCFF) : null,
       child: Padding(
         padding: const EdgeInsets.all(12),
         child: Column(
@@ -342,6 +389,10 @@ class _VisitCard extends StatelessWidget {
               ],
             ),
             Text(trip.title, style: const TextStyle(fontSize: 13)),
+            VisitCountdown(visitAt: trip.visitAt),
+            if (focused)
+              const Text('Opened from your reminder',
+                  style: TextStyle(fontSize: 11, color: Color(0xFF007E91))),
             const SizedBox(height: 5),
             Row(
               children: [

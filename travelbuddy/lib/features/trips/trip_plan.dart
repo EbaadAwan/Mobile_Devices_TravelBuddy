@@ -1,3 +1,5 @@
+import 'reminder_preferences.dart';
+
 /// A single scheduled visit. All dates are stored as local wall-clock times.
 class TripPlan {
   const TripPlan({
@@ -7,6 +9,7 @@ class TripPlan {
     required this.visitAt,
     this.destinationLocation = '',
     this.notes = '',
+    this.reminders = const ReminderPreferences(),
   });
 
   final String id;
@@ -15,6 +18,7 @@ class TripPlan {
   final String destinationLocation;
   final DateTime visitAt;
   final String notes;
+  final ReminderPreferences reminders;
 
   TripPlan copyWith({
     String? title,
@@ -22,6 +26,7 @@ class TripPlan {
     String? destinationLocation,
     DateTime? visitAt,
     String? notes,
+    ReminderPreferences? reminders,
   }) => TripPlan(
         id: id,
         title: title ?? this.title,
@@ -29,6 +34,7 @@ class TripPlan {
         destinationLocation: destinationLocation ?? this.destinationLocation,
         visitAt: visitAt ?? this.visitAt,
         notes: notes ?? this.notes,
+        reminders: reminders ?? this.reminders,
       );
 
   Map<String, dynamic> toJson() => {
@@ -38,6 +44,7 @@ class TripPlan {
         'destinationLocation': destinationLocation,
         'visitAt': visitAt.toIso8601String(),
         'notes': notes,
+        'reminders': reminders.toJson(),
       };
 
   factory TripPlan.fromJson(Map<String, dynamic> json) => TripPlan(
@@ -47,6 +54,7 @@ class TripPlan {
         destinationLocation: json['destinationLocation'] as String? ?? '',
         visitAt: DateTime.parse(json['visitAt'] as String),
         notes: json['notes'] as String? ?? '',
+        reminders: ReminderPreferences.fromJson(json['reminders']),
       );
 
   /// A stable ID across launches, used to update/cancel one reminder.

@@ -5,6 +5,8 @@ import 'package:timezone/data/latest_all.dart' as timezone_data;
 import 'package:timezone/timezone.dart' as tz;
 
 import '../features/trips/trip_plan.dart';
+import '../features/reminders/reminder_schedule.dart';
+import '../features/reminders/trip_focus_controller.dart';
 
 /// Android local notifications. These are NOT Firebase/remote push messages.
 /// The Android emulator is the primary demonstration target.
@@ -26,6 +28,23 @@ class TravelNotificationService {
       channelDescription: 'Reminders for your upcoming scheduled visits',
       importance: Importance.high,
       priority: Priority.high,
+    ),
+  );
+  // A NEW channel ID is necessary because Android remembers the importance
+  // of previously created channels and won't update them from Dart.
+  static const _prominentTripDetails = NotificationDetails(
+    android: AndroidNotificationDetails(
+      'travelbuddy_trip_heads_up_v2',
+      'Upcoming visit alerts',
+      channelDescription: 'Time-sensitive reminders for planned visits',
+      importance: Importance.max,
+      priority: Priority.max,
+      playSound: true,
+      enableVibration: true,
+      actions: <AndroidNotificationAction>[
+        AndroidNotificationAction('view_trip', 'View trip',
+            showsUserInterface: true),
+      ],
     ),
   );
   static const _favoriteDetails = NotificationDetails(
@@ -74,9 +93,18 @@ class TravelNotificationService {
 
   void _openFromPayload(String? payload) {
     if (payload == null) return;
-    if (payload.startsWith('trip:')) _onSelectTab?.call(2);
+    if (payload.startsWith('trip:')) {
+      final id = payload.substring('trip:'.length);
+      if (id != 'test') {
+        TripFocusController.instance.focus(id);
+      }
+      _onSelectTab?.call(2);
+    }
     if (payload.startsWith('favorite:')) _onSelectTab?.call(1);
   }
+
+  /// Used by both native notification actions and the in-app View trip button.
+  void openTrip(String tripId) => _openFromPayload('trip:$tripId');
 
   Future<bool> requestPermission() async {
     if (!isAndroid) return false;
@@ -125,10 +153,45 @@ class TravelNotificationService {
     return true;
   }
 
+  /// Schedule up to three *distinct* Android notifications per visit.
+  /// Existing legacy reminders are cancelled so migration cannot duplicate.
+  /// Returns the number successfully registered with Android.
+  Future<int> scheduleTripReminders(TripPlan trip) async {
+    if (!isAndroid) return 0;
+    await initialize();
+    await cancelTrip(trip);
+    final events = TripReminderSchedule.upcoming(trip);
+    if (events.isEmpty || !_timezoneReady || !await requestPermission()) {
+      return 0;
+    }
+    var count = 0;
+    for (final event in events) {
+      try {
+        await _plugin.zonedSchedule(
+          event.notificationId,
+          event.title,
+          event.body,
+          tz.TZDateTime.from(event.at, tz.local),
+          _prominentTripDetails,
+          // Avoid exact-alarm permission / Play Store policy restrictions.
+          androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+          payload: event.payload,
+        );
+        count++;
+      } catch (error) {
+        debugPrint('Could not schedule ${event.minutesBefore}m reminder: $error');
+      }
+    }
+    return count;
+  }
+
   Future<void> cancelTrip(TripPlan trip) async {
     if (!isAndroid) return;
     await initialize();
     await _plugin.cancel(trip.notificationId);
+    for (final id in TripReminderSchedule.allIds(trip.id)) {
+      await _plugin.cancel(id);
+    }
   }
 
   /// This is a LOCAL alert about the user's own favourite action.
@@ -158,7 +221,7 @@ class TravelNotificationService {
       900002,
       'TravelBuddy notifications are working',
       'This is a local Android test notification.',
-      _reminderDetails,
+      _prominentTripDetails,
       payload: 'trip:test',
     );
     return true;

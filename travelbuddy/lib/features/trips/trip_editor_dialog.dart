@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../services/travel_notification_service.dart';
 import 'trip_plan.dart';
+import 'reminder_preferences.dart';
 import 'trip_store.dart';
 
 const _cyan = Color(0xFF08C6DF);
@@ -46,17 +47,17 @@ class TripEditorDialog extends StatefulWidget {
       return false;
     }
 
-    var reminderScheduled = false;
+    var remindersScheduled = 0;
     try {
-      reminderScheduled =
-          await TravelNotificationService.instance.scheduleTrip(updated);
+      remindersScheduled =
+          await TravelNotificationService.instance.scheduleTripReminders(updated);
     } catch (_) {
       // A notification failure must not undo a successfully saved visit.
     }
     messenger.showSnackBar(SnackBar(
-      content: Text(reminderScheduled
-          ? 'Trip saved. Android reminder scheduled.'
-          : 'Trip saved. No reminder scheduled (check permissions or time).'),
+      content: Text(remindersScheduled > 0
+          ? 'Trip saved. $remindersScheduled reminder(s) scheduled.'
+          : 'Trip saved. No reminders scheduled (check permissions or time).'),
     ));
     return true;
   }
@@ -72,6 +73,7 @@ class _TripEditorDialogState extends State<TripEditorDialog> {
   late final TextEditingController _notes;
   late DateTime _date;
   late TimeOfDay _time;
+  late ReminderPreferences _reminders;
   String? _dateError;
   bool _changed = false;
 
@@ -88,6 +90,7 @@ class _TripEditorDialogState extends State<TripEditorDialog> {
     final initial = existing?.visitAt ?? DateTime.now().add(const Duration(days: 3));
     _date = DateTime(initial.year, initial.month, initial.day);
     _time = TimeOfDay.fromDateTime(initial);
+    _reminders = existing?.reminders ?? const ReminderPreferences();
   }
 
   @override
@@ -205,6 +208,7 @@ class _TripEditorDialogState extends State<TripEditorDialog> {
           widget.existing?.destinationLocation ?? widget.initialLocation,
       visitAt: visit,
       notes: _notes.text.trim(),
+      reminders: _reminders,
     );
     Navigator.pop(context, trip);
   }
@@ -288,7 +292,60 @@ class _TripEditorDialogState extends State<TripEditorDialog> {
                     border: OutlineInputBorder(),
                   ),
                 ),
-                const Text('Reminders require Android notification permission.',
+                const Divider(height: 20),
+                const Text('Remind me before this visit',
+                    style: TextStyle(fontWeight: FontWeight.w600)),
+                Row(
+                  children: [
+                    Checkbox(
+                      value: _reminders.firstEnabled,
+                      onChanged: (value) => setState(() {
+                        _reminders = _reminders.copyWith(firstEnabled: value ?? false);
+                        _changed = true;
+                      }),
+                    ),
+                    const Text('First reminder'),
+                    const Spacer(),
+                    DropdownButton<int>(
+                      value: _reminders.firstMinutes,
+                      items: const [
+                        DropdownMenuItem(value: 60, child: Text('60 min')),
+                        DropdownMenuItem(value: 90, child: Text('90 min')),
+                      ],
+                      onChanged: _reminders.firstEnabled
+                          ? (minutes) {
+                              if (minutes == null) return;
+                              setState(() {
+                                _reminders = _reminders.copyWith(firstMinutes: minutes);
+                                _changed = true;
+                              });
+                            }
+                          : null,
+                    ),
+                  ],
+                ),
+                CheckboxListTile(
+                  dense: true,
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('30 minutes before'),
+                  value: _reminders.thirtyEnabled,
+                  onChanged: (value) => setState(() {
+                    _reminders = _reminders.copyWith(thirtyEnabled: value ?? false);
+                    _changed = true;
+                  }),
+                ),
+                CheckboxListTile(
+                  dense: true,
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('5 minutes before'),
+                  value: _reminders.fiveEnabled,
+                  onChanged: (value) => setState(() {
+                    _reminders = _reminders.copyWith(fiveEnabled: value ?? false);
+                    _changed = true;
+                  }),
+                ),
+                const Text('Android notification permission is required. '
+                    'Delivery times may vary due to device power settings.',
                     style: TextStyle(fontSize: 11, color: Colors.black54)),
               ],
             ),
