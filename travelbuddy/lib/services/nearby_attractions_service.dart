@@ -54,7 +54,7 @@ class NearbyAttractionsService {
     final url = Uri.parse(
       'https://en.wikipedia.org/w/api.php?'
       'action=query&list=geosearch&gscoord=$latitude|$longitude'
-      '&gsradius=$radius&gslimit=10&format=json&origin=*'
+      '&gsradius=$radius&gslimit=25&format=json&origin=*'
     );
 
     print('Fetching from Wikipedia API...');
