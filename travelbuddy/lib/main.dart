@@ -11,6 +11,7 @@ import 'features/trips/trip_planner_screen.dart';
 import 'features/trips/trip_store.dart';
 import 'features/activity/activity_status_widgets.dart';
 import 'services/travel_notification_service.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 void main() {
   runApp(const TravelBuddyApp());
@@ -1279,7 +1280,33 @@ void _showDetails(
             ),
             const SizedBox(height: 14),
             Text(destination.description),
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  final searchQuery = destination.location.isNotEmpty && 
+                                      destination.location != 'Attraction'
+                      ? destination.location
+                      : '${destination.name}, Oshawa, Ontario';
+                  _openMap(searchQuery);
+                },
+                icon: const Icon(Icons.directions, color: Colors.white),
+                label: const Text(
+                  'Get Directions',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: travelCyan,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
             ActivityStatusPanel(attractionName: destination.name),
             const SizedBox(height: 18),
             AttractionInfoSection(
@@ -1322,4 +1349,24 @@ String _formatTime(DateTime date) {
   final minute = date.minute.toString().padLeft(2, '0');
   final period = date.hour >= 12 ? 'PM' : 'AM';
   return '$hour:$minute $period';
+}
+
+Future<void> _openMap(String address) async {
+  if (address.isEmpty || address == 'Unknown' || address == 'Attraction') return;
+
+  final encodedAddress = Uri.encodeComponent(address);
+  final url = Uri.parse('https://www.google.com/maps/search/?api=1&query=$encodedAddress');
+
+  try {
+    final launched = await launchUrl(
+      url,
+      mode: LaunchMode.externalApplication,
+    );
+    
+    if (!launched) {
+      debugPrint('Could not launch $url');
+    }
+  } catch (e) {
+    debugPrint('Error launching map: $e');
+  }
 }
